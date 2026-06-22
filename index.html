@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Cowork — Training Hub</title>
+<style>
+/* ── RESET & TOKENS ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --purple:#7B4FD4; --pink:#D96BAE;
+  --grad:linear-gradient(135deg,#7B4FD4 0%,#D96BAE 100%);
+  --dark:#1C1230; --mid:#4A3870; --soft:#F4F0FD; --rule:#E0D8F5;
+  --white:#FFFFFF; --correct:#1AAF72; --wrong:#E04F3A;
+  --warn-bg:#FEF0EC; --ok-bg:#EDFCF4;
+  --fs-xs:13px; --fs-sm:15px; --fs-md:16px; --fs-lg:18px; --fs-xl:20px;
+}
+body {
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  background:linear-gradient(160deg,#EDE8F8 0%,#F8E8F3 100%);
+  min-height:100vh;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  background:var(--grad);
+  padding:14px 28px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  box-shadow:0 2px 16px rgba(123,79,212,.25);
+  position:sticky; top:0; z-index:100;
+}
+.topbar-left { display:flex; align-items:center; gap:12px; }
+.topbar-logo { width:36px; height:36px; background:rgba(255,255,255,.2); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; }
+.topbar-title h1 { font-size:var(--fs-xl); font-weight:800; color:#fff; }
+.topbar-title p  { font-size:var(--fs-xs); color:rgba(255,255,255,.75); }
+.btn-toggle {
+  display:flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,.18);
+  border:1.5px solid rgba(255,255,255,.35);
+  border-radius:50px;
+  padding:8px 18px;
+  color:#fff;
+  font-size:var(--fs-sm);
+  font-weight:700;
+  cursor:pointer;
+  transition:background .2s;
+  white-space:nowrap;
+}
+.btn-toggle:hover { background:rgba(255,255,255,.28); }
+.toggle-dot {
+  width:10px; height:10px; border-radius:50%;
+  background:#fff;
+  box-shadow:0 0 0 2px rgba(255,255,255,.4);
+  transition:background .2s;
+}
+.btn-toggle.off .toggle-dot { background:rgba(255,255,255,.35); }
+
+/* ── LAYOUT ── */
+.layout {
+  display:grid;
+  grid-template-columns:1fr 420px;
+  gap:24px;
+  padding:28px 24px 48px;
+  max-width:1300px;
+  margin:0 auto;
+  align-items:start;
+  transition:grid-template-columns .35s ease;
+}
+.layout.sheet-hidden {
+  grid-template-columns:1fr 0px;
+}
+
+/* ── QUIZ COLUMN ── */
+.quiz-col { min-width:0; }
+.card {
+  background:var(--white);
+  border-radius:20px;
+  box-shadow:0 8px 48px rgba(123,79,212,.14);
+  overflow:hidden;
+}
+.progress-wrap { height:5px; background:var(--rule); }
+.progress-bar  { height:100%; background:var(--grad); transition:width .4s ease; }
+.q-header { padding:26px 30px 0; display:flex; justify-content:space-between; align-items:center; }
+.q-meta    { font-size:var(--fs-xs); font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--purple); }
+.q-counter { font-size:var(--fs-sm); font-weight:600; color:var(--mid); background:var(--soft); padding:4px 12px; border-radius:20px; }
+.scenario-badge {
+  display:block; margin:14px 30px 0;
+  background:linear-gradient(135deg,rgba(123,79,212,.08),rgba(217,107,174,.08));
+  border:1px solid rgba(123,79,212,.18);
+  border-radius:8px; padding:10px 14px;
+  font-size:var(--fs-lg); color:var(--mid); line-height:1.55;
+}
+.scenario-badge strong { color:var(--purple); }
+.q-text   { padding:18px 30px 0; font-size:var(--fs-lg); font-weight:700; color:var(--dark); line-height:1.5; }
+.options  { padding:16px 30px 24px; display:flex; flex-direction:column; gap:10px; }
+.option {
+  border:2px solid var(--rule); border-radius:11px; padding:13px 16px;
+  cursor:pointer; font-size:var(--fs-md); color:var(--dark);
+  background:var(--white); text-align:left;
+  transition:border-color .18s,background .18s;
+  display:flex; align-items:flex-start; gap:12px; line-height:1.45;
+}
+.option:hover:not(:disabled) { border-color:var(--purple); background:var(--soft); }
+.option:disabled { cursor:default; }
+.option.correct { border-color:var(--correct); background:var(--ok-bg); }
+.option.wrong   { border-color:var(--wrong);   background:var(--warn-bg); }
+.opt-letter {
+  min-width:28px; height:28px; border-radius:50%;
+  background:var(--soft); border:1.5px solid var(--rule);
+  font-size:var(--fs-xs); font-weight:800; color:var(--mid);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition:background .18s,border-color .18s,color .18s;
+}
+.option.correct .opt-letter { background:var(--correct); border-color:var(--correct); color:#fff; }
+.option.wrong   .opt-letter { background:var(--wrong);   border-color:var(--wrong);   color:#fff; }
+.feedback {
+  margin:0 30px 22px; border-radius:11px; padding:14px 16px;
+  font-size:var(--fs-sm); line-height:1.6; display:none;
+}
+.feedback.show    { display:block; }
+.feedback.correct { background:var(--ok-bg);   border:1.5px solid #A8E8C8; color:#0F6B44; }
+.feedback.wrong   { background:var(--warn-bg); border:1.5px solid #F5B8A5; color:#8B2910; }
+.btn-wrap { padding:0 30px 28px; }
+.btn-next {
+  width:100%; padding:14px; background:var(--grad); color:#fff;
+  font-size:var(--fs-md); font-weight:700; border:none; border-radius:11px;
+  cursor:pointer; display:none; box-shadow:0 4px 20px rgba(123,79,212,.25);
+}
+.btn-next.show { display:block; }
+.btn-next:hover { opacity:.9; }
+
+/* INTRO */
+#intro { padding:48px 36px; text-align:center; }
+.intro-icon { font-size:48px; margin-bottom:14px; display:block; }
+#intro h2 { font-size:26px; font-weight:800; color:var(--dark); margin-bottom:10px; }
+#intro p  { font-size:var(--fs-md); color:var(--mid); line-height:1.6; max-width:420px; margin:0 auto 26px; }
+.intro-stats { display:flex; justify-content:center; gap:16px; margin-bottom:30px; }
+.stat { background:var(--soft); border-radius:11px; padding:14px 22px; text-align:center; }
+.stat-num { font-size:24px; font-weight:800; color:var(--purple); }
+.stat-lbl { font-size:var(--fs-xs); color:var(--mid); margin-top:2px; }
+.btn-start {
+  padding:15px 50px; background:var(--grad); color:#fff;
+  font-size:var(--fs-lg); font-weight:700; border:none;
+  border-radius:11px; cursor:pointer; box-shadow:0 6px 22px rgba(123,79,212,.3);
+}
+.btn-start:hover { opacity:.9; }
+
+/* NAME SCREEN */
+#namescreen { padding:48px 36px; text-align:center; display:none; }
+#namescreen h2 { font-size:24px; font-weight:800; color:var(--dark); margin-bottom:8px; }
+#namescreen p  { font-size:var(--fs-sm); color:var(--mid); margin-bottom:30px; }
+.field-group { text-align:left; margin-bottom:18px; }
+.field-group label { display:block; font-size:var(--fs-sm); font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:.8px; margin-bottom:7px; }
+.field-group input { width:100%; padding:13px 15px; border:2px solid var(--rule); border-radius:10px; font-size:var(--fs-md); color:var(--dark); font-family:inherit; outline:none; transition:border-color .18s; }
+.field-group input:focus { border-color:var(--purple); }
+.field-group input.error { border-color:var(--wrong); }
+.err-msg { font-size:var(--fs-xs); color:var(--wrong); margin-top:5px; display:none; }
+.err-msg.show { display:block; }
+.btn-submit { width:100%; margin-top:8px; padding:14px; background:var(--grad); color:#fff; font-size:var(--fs-md); font-weight:700; border:none; border-radius:11px; cursor:pointer; box-shadow:0 4px 20px rgba(123,79,212,.25); }
+.btn-submit:hover { opacity:.9; }
+.btn-submit:disabled { opacity:.6; cursor:default; }
+.submitting-msg { font-size:var(--fs-sm); color:var(--mid); margin-top:12px; display:none; }
+.submitting-msg.show { display:block; }
+
+/* RESULTS */
+#results { padding:48px 36px; text-align:center; display:none; }
+.result-badge { width:100px; height:100px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:40px; }
+.result-badge.pass { background:var(--ok-bg); border:3px solid var(--correct); }
+.result-badge.fail { background:var(--warn-bg); border:3px solid var(--wrong); }
+#results h2 { font-size:26px; font-weight:800; color:var(--dark); margin-bottom:6px; }
+.score-txt  { font-size:var(--fs-md); color:var(--mid); margin-bottom:26px; }
+.score-big  { font-size:56px; font-weight:900; background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; line-height:1; margin-bottom:6px; }
+.result-breakdown { display:flex; justify-content:center; gap:14px; margin-bottom:28px; }
+.rb     { background:var(--soft); border-radius:10px; padding:12px 20px; }
+.rb-num { font-size:22px; font-weight:800; }
+.rb-num.c { color:var(--correct); }
+.rb-num.w { color:var(--wrong); }
+.rb-lbl { font-size:var(--fs-xs); color:var(--mid); margin-top:2px; }
+.review-list { text-align:left; margin-bottom:28px; }
+.review-hd   { font-size:var(--fs-xs); font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--mid); margin-bottom:10px; }
+.review-item { display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--rule); font-size:var(--fs-sm); color:var(--dark); line-height:1.4; }
+.review-item:last-child { border-bottom:none; }
+.review-q    { font-weight:700; }
+.recorded-note { font-size:var(--fs-xs); color:var(--correct); margin-bottom:20px; }
+.btn-retry { padding:14px 36px; background:var(--grad); color:#fff; font-size:var(--fs-md); font-weight:700; border:none; border-radius:11px; cursor:pointer; box-shadow:0 4px 18px rgba(123,79,212,.25); }
+.btn-retry:hover { opacity:.9; }
+
+/* ── CHEAT SHEET COLUMN ── */
+.sheet-col {
+  position:sticky; top:80px;
+  max-height:calc(100vh - 110px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  transition:opacity .3s, width .35s;
+  scrollbar-width:thin;
+  scrollbar-color:var(--rule) transparent;
+}
+.sheet-col::-webkit-scrollbar { width:5px; }
+.sheet-col::-webkit-scrollbar-thumb { background:var(--rule); border-radius:10px; }
+.sheet-col.hidden { opacity:0; pointer-events:none; width:0; overflow:hidden; }
+
+.cs-card {
+  background:var(--white);
+  border-radius:18px;
+  box-shadow:0 6px 32px rgba(123,79,212,.12);
+  overflow:hidden;
+}
+.cs-header {
+  background:var(--grad);
+  padding:16px 20px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.cs-header h2 { font-size:var(--fs-md); font-weight:800; color:#fff; }
+.cs-header span { font-size:var(--fs-xs); color:rgba(255,255,255,.75); font-style:italic; }
+
+.cs-body { padding:18px; display:flex; flex-direction:column; gap:16px; }
+
+/* Section label */
+.cs-section-label {
+  display:flex; align-items:center; gap:7px; margin-bottom:10px;
+}
+.cs-dot { width:8px; height:8px; border-radius:50%; background:var(--grad); flex-shrink:0; }
+.cs-section-label h3 { font-size:var(--fs-xs); font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--purple); }
+
+/* Prompt formula */
+.formula { background:var(--dark); border-radius:10px; padding:14px 16px; }
+.formula p { font-size:var(--fs-xs); color:rgba(255,255,255,.5); margin-bottom:8px; text-transform:uppercase; letter-spacing:.8px; font-weight:700; }
+.formula-parts { display:flex; flex-wrap:wrap; gap:6px; }
+.fp { font-size:var(--fs-xs); font-weight:700; padding:4px 10px; border-radius:20px; color:#fff; }
+.fp1{background:#7B4FD4;} .fp2{background:#9B60E0;} .fp3{background:#BB72EC;} .fp4{background:#D96BAE;}
+.fp-plus { color:rgba(255,255,255,.3); font-size:16px; line-height:26px; }
+
+/* Prompt blocks */
+.cs-block { background:var(--soft); border-radius:9px; overflow:hidden; margin-bottom:8px; }
+.cs-block:last-child { margin-bottom:0; }
+.cs-block-head { background:var(--grad); color:#fff; font-size:var(--fs-xs); font-weight:700; padding:6px 12px; }
+.cs-block-body { padding:10px 12px; font-size:var(--fs-sm); color:var(--dark); line-height:1.55; }
+.cs-eg { font-size:var(--fs-xs); color:var(--mid); margin-top:7px; padding:6px 9px; background:rgba(123,79,212,.07); border-left:2.5px solid var(--purple); border-radius:0 4px 4px 0; line-height:1.5; }
+.cs-eg strong { color:var(--purple); }
+
+/* 4D cards */
+.four-d { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.d-card { background:var(--soft); border-radius:8px; padding:10px 11px; border-top:3px solid var(--purple); }
+.d-card.d2{border-top-color:var(--pink);} .d-card.d3{border-top-color:#A875E8;} .d-card.d4{border-top-color:#C45AC0;}
+.d-card h4 { font-size:var(--fs-sm); font-weight:800; color:var(--dark); margin-bottom:3px; }
+.d-card p  { font-size:var(--fs-xs); color:var(--mid); line-height:1.45; }
+
+/* Decision table */
+.cs-table { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
+.cs-table thead th { background:var(--grad); color:#fff; padding:7px 10px; text-align:left; font-weight:700; font-size:var(--fs-xs); }
+.cs-table thead th:first-child{border-radius:7px 0 0 0;} .cs-table thead th:last-child{border-radius:0 7px 0 0;}
+.cs-table tbody tr:nth-child(even) td { background:var(--soft); }
+.cs-table tbody td { padding:7px 10px; color:var(--dark); border-bottom:1px solid var(--rule); line-height:1.4; vertical-align:top; }
+.badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:var(--fs-xs); font-weight:700; white-space:nowrap; }
+.badge-chat  { background:#E8F4FF; color:#2264C7; }
+.badge-cowork{ background:#F0E8FF; color:#6B35C4; }
+
+/* Glossary */
+.gloss-item { display:flex; gap:9px; padding:8px 0; border-bottom:1px solid var(--rule); align-items:flex-start; }
+.gloss-item:last-child { border-bottom:none; }
+.gloss-term { font-size:var(--fs-xs); font-weight:800; color:var(--purple); min-width:76px; padding-top:2px; }
+.gloss-def  { font-size:var(--fs-sm); color:var(--dark); line-height:1.45; }
+
+/* Safety grid */
+.safety-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.safety-box  { border-radius:8px; padding:10px 12px; }
+.safety-box.safe   { background:#EDFCF4; border:1.5px solid #A8E8C8; }
+.safety-box.unsafe { background:#FEF0EC; border:1.5px solid #F5B8A5; }
+.safety-box h4 { font-size:var(--fs-xs); font-weight:800; letter-spacing:.5px; text-transform:uppercase; margin-bottom:7px; }
+.safe h4   { color:var(--correct); }
+.unsafe h4 { color:var(--wrong); }
+.safety-box ul { list-style:none; }
+.safety-box ul li { font-size:var(--fs-sm); color:var(--dark); line-height:1.55; padding-left:14px; position:relative; margin-bottom:2px; }
+.safe   ul li::before { content:'✓'; position:absolute; left:0; color:var(--correct); font-size:11px; top:2px; }
+.unsafe ul li::before { content:'✕'; position:absolute; left:0; color:var(--wrong);   font-size:11px; top:2px; }
+
+/* tip */
+.cs-tip { background:linear-gradient(135deg,#F4F0FD,#FDE8F5); border-radius:9px; padding:10px 13px; border-left:3px solid var(--purple); font-size:var(--fs-sm); color:var(--dark); line-height:1.55; }
+.cs-tip strong { color:var(--purple); }
+
+/* link items */
+.cs-link { display:flex; align-items:flex-start; gap:9px; padding:8px 0; border-bottom:1px solid var(--rule); text-decoration:none; }
+.cs-link:last-child { border-bottom:none; }
+.cs-link-icon { width:28px; height:28px; border-radius:7px; background:var(--grad); display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
+.cs-link strong { display:block; font-size:var(--fs-sm); color:var(--dark); font-weight:700; line-height:1.3; }
+.cs-link span   { font-size:var(--fs-xs); color:var(--purple); word-break:break-all; }
+
+hr.cs-rule { border:none; border-top:1.5px solid var(--rule); margin:2px 0; }
+
+.hidden-el { display:none !important; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">🤖</div>
+    <div class="topbar-title">
+      <h1>Upskill Generative AI for CSII Office Automation</h1>
+      <p>Post-Test &amp; Quick Reference</p>
+    </div>
+  </div>
+  <button class="btn-toggle" id="toggleBtn" onclick="toggleSheet()">
+    <div class="toggle-dot" id="toggleDot"></div>
+    <span id="toggleLabel">Hide Cheat Sheet</span>
+  </button>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout" id="layout">
+
+  <!-- LEFT: QUIZ -->
+  <div class="quiz-col">
+    <div class="card">
+      <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+
+      <!-- INTRO -->
+      <div id="intro">
+        <span class="intro-icon">📋</span>
+        <h2>Post-Test</h2>
+        <p>Answer 10 scenario-based questions to demonstrate your understanding of Claude Cowork, prompt engineering, and AI best practices.</p>
+        <div class="intro-stats">
+          <div class="stat"><div class="stat-num">10</div><div class="stat-lbl">Questions</div></div>
+          <div class="stat"><div class="stat-num">70%</div><div class="stat-lbl">Pass Score</div></div>
+          <div class="stat"><div class="stat-num">~8 min</div><div class="stat-lbl">Est. Time</div></div>
+        </div>
+        <button class="btn-start" onclick="startQuiz()">Start Test →</button>
+      </div>
+
+      <!-- QUIZ -->
+      <div id="quiz">
+        <div class="q-header">
+          <span class="q-meta" id="qTag"></span>
+          <span class="q-counter" id="qCounter">1 / 10</span>
+        </div>
+        <div class="scenario-badge" id="scenario"></div>
+        <div class="q-text" id="qText"></div>
+        <div class="options" id="options"></div>
+        <div class="feedback" id="feedback"></div>
+        <div class="btn-wrap"><button class="btn-next" id="btnNext" onclick="nextQuestion()"></button></div>
+      </div>
+
+      <!-- NAME/EMAIL -->
+      <div id="namescreen">
+        <span style="font-size:38px;display:block;margin-bottom:14px">✏️</span>
+        <h2>Almost done!</h2>
+        <p>Enter your details so your result gets recorded.</p>
+        <div class="field-group">
+          <label>Full Name</label>
+          <input type="text" id="fieldName" placeholder="e.g. Somchai Rakdee" />
+          <div class="err-msg" id="errName">Please enter your name.</div>
+        </div>
+        <div class="field-group">
+          <label>Email Address</label>
+          <input type="email" id="fieldEmail" placeholder="e.g. somchai@company.com" />
+          <div class="err-msg" id="errEmail">Please enter a valid email.</div>
+        </div>
+        <button class="btn-submit" id="btnSubmit" onclick="submitResult()">Submit My Result →</button>
+        <div class="submitting-msg" id="submittingMsg">⏳ Recording your result…</div>
+      </div>
+
+      <!-- RESULTS -->
+      <div id="results">
+        <div class="result-badge" id="resultBadge"></div>
+        <div class="score-big" id="scoreBig"></div>
+        <h2 id="resultTitle"></h2>
+        <p class="score-txt" id="resultSub"></p>
+        <p class="recorded-note" id="recordedNote"></p>
+        <div class="result-breakdown">
+          <div class="rb"><div class="rb-num c" id="correctCount"></div><div class="rb-lbl">Correct</div></div>
+          <div class="rb"><div class="rb-num w" id="wrongCount"></div><div class="rb-lbl">Incorrect</div></div>
+          <div class="rb"><div class="rb-num" id="pctCount" style="color:var(--purple)"></div><div class="rb-lbl">Score</div></div>
+        </div>
+        <div class="review-list" id="reviewList"></div>
+        <button class="btn-retry" onclick="retryQuiz()">Retry Test ↺</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: CHEAT SHEET -->
+  <div class="sheet-col" id="sheetCol">
+    <div class="cs-card">
+      <div class="cs-header">
+        <h2>📄 Quick Reference</h2>
+        <span>Use while taking the test</span>
+      </div>
+      <div class="cs-body">
+
+        <!-- Prompt Formula -->
+        <div>
+          <div class="cs-section-label"><div class="cs-dot"></div><h3>Prompt Formula</h3></div>
+          <div class="formula">
+            <p>Every strong prompt includes:</p>
+            <div class="formula-parts">
+              <span class="fp fp1">Deliverable</span><span class="fp-plus">+</span>
+              <span class="fp fp2">Inputs</span><span class="fp-plus">+</span>
+              <span class="fp fp3">Specifics</span><span class="fp-plus">+</span>
+              <span class="fp fp4">Guidance</span>
+            </div>
+          </div>
+        </div>
+
+        <hr class="cs-rule">
+
+        <!-- Prompt Techniques -->
+        <div>
+          <div class="cs-section-label"><div class="cs-dot"></div><h3>Prompt Techniques</h3></div>
+          <div class="cs-block">
+            <div class="cs-block-head">① Be Clear &amp; Direct</div>
+            <div class="cs-block-body">Start with an action verb. State the task immediately.
+              <div class="cs-eg"><strong>✕</strong> "I was thinking about geothermal energy…"<br><strong>✓</strong> "List 3 countries using geothermal energy."</div>
+            </div>
+          </div>
+          <div class="cs-block">
+            <div class="cs-block-head">② Be Specific</div>
+            <div class="cs-block-body">Add constraints: length, format, audience, tone.
+              <div class="cs-eg"><strong>✕</strong> "Write a short story about a character."<br><strong>✓</strong> "Write a story under 1,000 words with one supporting character."</div>
+            </div>
+          </div>
+          <div class="cs-block">
+            <div class="cs-block-head">③ Provide Example (Few-shot)</div>
+            <div class="cs-block-body">Show Claude input → output pairs before your real request.
+              <div class="cs-eg"><strong>Zero-shot</strong> — no example, direct instruction<br><strong>Few-shot</strong> — 1–3 examples first, then your task</div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="cs-rule">
+
+        <!-- 4D -->
+        <div>
+          <div class="cs-section-label"><div class="cs-dot"></div><h3>4D Framework</h3></div>
+          <div class="four-d">
+            <div class="d-card"><h4>Discernment</h4><p>Evaluate AI output critically before using it.</p></div>
+            <div class="d-card d2"><h4>Description</h4><p>Communicate clearly. Precise prompts get precise results.</p></div>
+            <div class="d-card d3"><h4>Delegation</h4><p>Decide what to delegate to AI and what to keep yourself.</p></div>
+            <div class="d-card d4"><h4>Diligence</h4><p>Interact responsibly. Responsibility stays with you.</p></div>
+          </div>
+        </div>
+
+        <hr class="cs-rule">
+
+        <!-- Chat vs Cowork -->
+        <div>
+          <div class="cs-section-label"><div class="cs-dot"></div><h3>Chat vs Cowork</h3></div>
+          <table class="cs-table">
+            <thead><tr><th>Situation</th><th>Use</th></tr></thead>
+            <tbody>
+              <tr><td>Quick Q&amp;A, brainstorming, single-turn drafts</td><td><span class="badge badge-chat">Chat</span></td></tr>
+              <tr><td>Task needs to read/edit files on your computer</td><td><span class="badge badge-cowork">Cowork</span></td></tr>
+              <tr><td>Multi-step task spanning multiple tools</td><td><span class="badge badge-cowork">Cowork</span></td></tr>
+              <tr><td>Task should repeat on a schedule</td><td><span class="badge badge-cowork">Cowork</span></td></tr>
+              <tr><td>Project needing persistent context across sessions</td><td><span class="badge badge-cowork">Cowork</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <hr class="cs-rule">
+
+        <!-- Glossary -->
+        <div>
+          <div class="cs-section-label"><div class="cs-dot"></div><h3>Key Concepts</h3></div>
+          <div class="gloss-item"><span class="gloss-term">Project</span><span class="gloss-def">Scoped workspace with instructions, scheduled tasks, context, and memory.</span></div>
+          <div class="gloss-item"><span class="gloss-term">Skill</span><span class="gloss-def">Expertise package that teaches Claude a specific task type. Auto-activates when added.</span></div>
+          <div class="gloss-item"><span class="gloss-term">Plugin</span><span class="gloss-def">A packaged set of skills built around a job function.</span></div>
+          <div class="gloss-item"><span class="gloss-term">Connector</span><span class="gloss-def">Driver that lets Claude connect to external apps (e.g. Google Drive, Slack).</span></div>
+          <div class="gloss-item"><span class="gloss-term">Artifact</span><span class="gloss-def">Standalone output created alongside your chat — doc, code, SVG, etc.</span></div>
+          <div class="gloss-item"><span class="gloss-term">Global Inst.</span><span class="gloss-def">Brief that applies to every session: your role, shorthand, output preferences.</span></div>
+          <div class="gloss-item"><span class="gloss-term">Scheduled</span><span class="gloss-def">Recurring task inside a Project. Always test on drafts first.</span></div>
+        </div>
+
+        <hr class="cs-rule">
+
+        <!-- Safe Inputs -->
+        <div>
+          <div class="cs-section-label"><div class="cs-dot"></div><h3>Safe vs Unsafe Inputs</h3></div>
+          <div class="safety-grid">
+            <div class="safety-box safe">
+              <h4>✓ Safe</h4>
+              <ul>
+                <li>Public documents</li>
+                <li>Non-sensitive meeting notes</li>
+                <li>Your own drafts</li>
+                <li>Anonymised data</li>
+                <li>Internal process guides</li>
+              </ul>
+            </div>
+            <div class="safety-box unsafe">
+              <h4>✕ Never share</h4>
+              <ul>
+                <li>Customer PII</li>
+                <li>Passwords / API keys</li>
+                <li>Unpublished financials</li>
+                <li>Trade secrets / IP</li>
+                <li>HR / health records</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <hr class="cs-rule">
+
+        <!-- Safety tip -->
+        <div class="cs-tip">
+          <strong>Cowork safety:</strong> Always back up files before running new workflows. Test on copies first. Avoid vague destructive verbs like "cut", "delete", or "update".
+        </div>
+
+        <hr class="cs-rule">
+
+        <!-- Links -->
+        <div>
+          <div class="cs-section-label"><div class="cs-dot"></div><h3>Further Study</h3></div>
+          <a class="cs-link" href="https://anthropic.skilljar.com/claude-101" target="_blank">
+            <div class="cs-link-icon">📘</div><div><strong>Claude 101</strong><span>anthropic.skilljar.com/claude-101</span></div>
+          </a>
+          <a class="cs-link" href="https://anthropic.skilljar.com/introduction-to-claude-cowork" target="_blank">
+            <div class="cs-link-icon">🖥️</div><div><strong>Introduction to Claude Cowork</strong><span>anthropic.skilljar.com/introduction-to-claude-cowork</span></div>
+          </a>
+          <a class="cs-link" href="https://anthropic.skilljar.com/ai-fluency-framework-foundations" target="_blank">
+            <div class="cs-link-icon">🧠</div><div><strong>AI Fluency: Framework &amp; Foundations</strong><span>anthropic.skilljar.com/ai-fluency-framework-foundations</span></div>
+          </a>
+          <a class="cs-link" href="https://support.claude.com" target="_blank">
+            <div class="cs-link-icon">💬</div><div><strong>Claude Support</strong><span>support.claude.com</span></div>
+          </a>
+        </div>
+
+      </div><!-- /cs-body -->
+    </div><!-- /cs-card -->
+  </div><!-- /sheet-col -->
+
+</div><!-- /layout -->
+
+<script>
+/* ── TOGGLE ── */
+let sheetVisible = true;
+function toggleSheet() {
+  sheetVisible = !sheetVisible;
+  const col = document.getElementById('sheetCol');
+  const lay = document.getElementById('layout');
+  const btn = document.getElementById('toggleBtn');
+  const lbl = document.getElementById('toggleLabel');
+  const dot = document.getElementById('toggleDot');
+  col.classList.toggle('hidden', !sheetVisible);
+  lay.classList.toggle('sheet-hidden', !sheetVisible);
+  btn.classList.toggle('off', !sheetVisible);
+  lbl.textContent = sheetVisible ? 'Hide Cheat Sheet' : 'Show Cheat Sheet';
+}
+
+/* ── GOOGLE FORM CONFIG ── */
+const FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLScvZ9XKwXF-b9DBmbqjq-UTI52D4dJZQrDcozda2RCR_tU26Q/formResponse";
+const ENTRY = {
+  name:"entry.175741283", email:"entry.1267231086",
+  score:"entry.683790302", result:"entry.284930202",
+  q:["entry.1831646627","entry.586234688","entry.643193939","entry.1780646967",
+     "entry.670167989","entry.1479369030","entry.2057257092","entry.318827687",
+     "entry.1521584427","entry.1966862327"]
+};
+
+/* ── QUESTIONS ── */
+const QUESTIONS = [
+  { tag:"Chat vs Cowork", scenario:"Your manager wants Claude to automatically summarise the weekly sales report every Monday morning and save it to a shared project folder.", question:"Which Claude feature is best suited for this task?", options:["A regular Chat conversation with Claude","A Cowork Project with a Scheduled Task","Claude Code in the terminal","A Global Instruction only"], correct:1, explanation:"Scheduled Tasks inside a Cowork Project are designed exactly for this: recurring, automated tasks that operate on real files on a schedule. Chat is single-turn and has no scheduling; Global Instructions apply to all sessions but don't automate tasks." },
+  { tag:"Safe Inputs", scenario:"You're about to ask Claude to help draft a response to a customer complaint email.", question:"Which of the following inputs would be appropriate to share with Claude?", options:["The customer's full name, email address, and purchase history","Your company's unpublished quarterly financial forecast","A description of the complaint type and your company's return policy","The customer's home address and phone number from your CRM"], correct:2, explanation:"A general description of the situation and policy is safe — it contains no personal data. Never share customer PII, internal financial data, or confidential records with Claude." },
+  { tag:"Prompt Engineering", scenario:"You need Claude to write a product description for a new ergonomic office chair.", question:"Which prompt is most likely to get a useful result?", options:['"Write something about our new chair."','"Can you help me describe a chair we\'re selling?"','"Write a 3-sentence product description for our ErgoFlex Pro chair. Target busy professionals aged 30–45. Highlight lumbar support, adjustable height, and mesh back. Use a confident, benefit-led tone."','"Write a product description."'], correct:2, explanation:"Option C applies all three principles: Clear (action verb, deliverable), Specific (length, audience, features, tone), leaving no room for guesswork. Vague prompts produce vague outputs." },
+  { tag:"4D Framework", scenario:"You asked Claude to research competitor pricing and it produced a detailed comparison table with specific numbers and claims.", question:"According to the 4D Framework, what should you do before sharing this with your team?", options:["Share it immediately — Claude's research is always up to date","Ask Claude to double-check itself before you share","Verify the key facts and figures independently before sharing","Delete it and do the research manually to be safe"], correct:2, explanation:"Discernment means evaluating AI output critically. Claude can hallucinate or use outdated data. Always verify factual claims independently. Asking Claude to check itself is not reliable." },
+  { tag:"Cowork Concepts", scenario:"Your team drafts proposals to clients. You want Claude to always use the company's formal sign-off, a specific structure, and reference the brand voice guide — across every task regardless of which team member starts it.", question:"What is the best way to set this up in Claude Cowork?", options:["Type the instructions at the start of every chat","Create a Skill that encodes the proposal process and brand rules","Add a Connector to your email system","Use Claude Code to hardcode the template"], correct:1, explanation:"A Skill is an expertise package that teaches Claude how to complete a specific recurring task. It loads automatically when relevant, so all team members benefit without repeating instructions." },
+  { tag:"Global Instruction", scenario:"You're setting up Claude Cowork for the first time. You want every session to understand your role, your team's internal abbreviations, and that you always want concise bullet-point summaries.", question:"What should you configure to achieve this?", options:["A Project Instruction for each project separately","A Global Instruction that applies to every session","A Scheduled Task that sends a briefing each morning","A Connector to your calendar system"], correct:1, explanation:"Global Instructions are the brief that applies to every session — covering who you are, your shorthand and acronyms, and how you like output delivered. Project Instructions are scoped to a single project only." },
+  { tag:"Cowork Safety", scenario:"You've built a new Cowork workflow that will automatically rename and reorganise 200 files in your main documents folder.", question:"What should you do before running it for the first time?", options:["Run it immediately — Claude won't delete anything without asking","Run it on a small batch first to check it works as expected","Back up the documents folder and test the workflow on copies first","Share the task with a colleague and let them approve it remotely"], correct:2, explanation:"The golden Cowork safety rule: back up anything irreplaceable before starting, and test new workflows on copies first. Even well-written prompts can have unexpected edge cases on live files." },
+  { tag:"AI Limitations", scenario:"A colleague tells you: 'If Claude gives us wrong legal advice and we act on it, Anthropic is liable for the outcome.'", question:"Is your colleague correct?", options:["Yes — Anthropic is responsible for Claude's outputs","Yes — Claude is responsible for its own advice","No — moral, ethical, and legal responsibility always stays with the people who use or deploy AI","It depends on whether you have a paid Anthropic subscription"], correct:2, explanation:"Claude cannot take responsibility for its actions. The people who use or deploy AI carry the moral, ethical, and legal responsibility for how outputs are used." },
+  { tag:"Prompt Engineering", scenario:"You want Claude to reply to customer complaints in a warm, empathetic tone that matches your brand. You've tried a vague prompt but the tone keeps coming out too formal.", question:"Which technique would most effectively fix this?", options:["Tell Claude to 'be warmer and more friendly'","Use a zero-shot prompt — just ask for empathy without examples","Provide 2–3 examples of ideal complaint replies before asking Claude to handle a new one","Ask Claude to search the internet for good complaint responses"], correct:2, explanation:"Few-shot prompting (1–3 ideal examples) is the most effective way to transfer a specific tone or style. Telling Claude to 'be warmer' is vague. Zero-shot works for simple tasks but struggles with nuanced tone." },
+  { tag:"Chat vs Cowork", scenario:"You're leading a 3-month product launch project. You need Claude to remember team roles, reference a shared brief document, apply the same tone rules to every task, and build on context from previous sessions.", question:"What is the right setup in Claude Cowork?", options:["Start a fresh Chat conversation each time you need help","Set a Global Instruction only and rely on Claude's general memory","Create a Cowork Project with instructions, a working folder, and project context","Use Claude Code to build a custom workflow from scratch"], correct:2, explanation:"A Cowork Project is designed exactly for this: persistent instructions, a linked working folder, document/URL context, and memory across tasks. Chat has no persistent context between sessions." }
+];
+
+const LETTERS=["A","B","C","D"];
+let current=0,score=0,answers=[],answered=false;
+
+function setProgress(p){document.getElementById('progressBar').style.width=p+'%';}
+function show(id){
+  ["intro","quiz","namescreen","results"].forEach(s=>{
+    const el=document.getElementById(s);
+    el.classList.remove('hidden-el');
+    el.style.display=(s===id)?'block':'none';
+  });
+}
+function startQuiz(){show('quiz');setProgress(0);renderQuestion();}
+function renderQuestion(){
+  const q=QUESTIONS[current];answered=false;
+  setProgress(current/QUESTIONS.length*100);
+  document.getElementById('qCounter').textContent=(current+1)+' / '+QUESTIONS.length;
+  document.getElementById('qTag').textContent=q.tag;
+  document.getElementById('scenario').innerHTML='<strong>Scenario:</strong> '+q.scenario;
+  document.getElementById('qText').textContent=q.question;
+  const wrap=document.getElementById('options');wrap.innerHTML='';
+  q.options.forEach((opt,i)=>{
+    const btn=document.createElement('button');btn.className='option';
+    btn.innerHTML='<span class="opt-letter">'+LETTERS[i]+'</span><span>'+opt+'</span>';
+    btn.onclick=()=>selectAnswer(i);wrap.appendChild(btn);
+  });
+  document.getElementById('feedback').className='feedback';
+  document.getElementById('feedback').innerHTML='';
+  const nx=document.getElementById('btnNext');nx.className='btn-next';
+  nx.textContent=current<QUESTIONS.length-1?'Next Question →':'Continue →';
+}
+function selectAnswer(idx){
+  if(answered)return;answered=true;
+  const q=QUESTIONS[current];const ok=idx===q.correct;
+  document.querySelectorAll('.option').forEach((b,i)=>{
+    b.disabled=true;
+    if(i===q.correct)b.classList.add('correct');
+    else if(i===idx&&!ok)b.classList.add('wrong');
+  });
+  if(ok)score++;
+  answers.push({selected:idx,correct:ok,tag:q.tag,question:q.question,chosenText:q.options[idx]});
+  const fb=document.getElementById('feedback');
+  fb.className='feedback show '+(ok?'correct':'wrong');
+  fb.innerHTML=(ok?'✅ <strong>Correct!</strong> ':'❌ <strong>Not quite.</strong> ')+q.explanation;
+  document.getElementById('btnNext').classList.add('show');
+}
+function nextQuestion(){
+  current++;
+  if(current>=QUESTIONS.length){setProgress(100);show('namescreen');}
+  else renderQuestion();
+}
+function submitResult(){
+  const nEl=document.getElementById('fieldName'),eEl=document.getElementById('fieldEmail');
+  const nVal=nEl.value.trim(),eVal=eEl.value.trim();let valid=true;
+  if(!nVal){nEl.classList.add('error');document.getElementById('errName').classList.add('show');valid=false;}
+  else{nEl.classList.remove('error');document.getElementById('errName').classList.remove('show');}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eVal)){eEl.classList.add('error');document.getElementById('errEmail').classList.add('show');valid=false;}
+  else{eEl.classList.remove('error');document.getElementById('errEmail').classList.remove('show');}
+  if(!valid)return;
+  const pct=Math.round(score/QUESTIONS.length*100),pass=pct>=70;
+  document.getElementById('btnSubmit').disabled=true;
+  document.getElementById('submittingMsg').classList.add('show');
+  const fd=new FormData();
+  fd.append(ENTRY.name,nVal);fd.append(ENTRY.email,eVal);
+  fd.append(ENTRY.score,pct+'% ('+score+'/'+QUESTIONS.length+')');
+  fd.append(ENTRY.result,pass?'PASS':'FAIL');
+  answers.forEach((a,i)=>fd.append(ENTRY.q[i],LETTERS[a.selected]+' — '+a.chosenText+' '+(a.correct?'✅':'❌')));
+  fetch(FORM_ACTION,{method:'POST',mode:'no-cors',body:fd}).catch(()=>{}).finally(()=>showResults(nVal,pct,pass));
+}
+function showResults(name,pct,pass){
+  show('results');
+  document.getElementById('resultBadge').className='result-badge '+(pass?'pass':'fail');
+  document.getElementById('resultBadge').textContent=pass?'🎉':'📚';
+  document.getElementById('scoreBig').textContent=pct+'%';
+  document.getElementById('resultTitle').textContent=pass?'Well done — You passed!':'Keep studying — Try again';
+  document.getElementById('resultSub').textContent=pass?'You demonstrated solid understanding of Claude Cowork fundamentals.':'You scored below 70%. Review the cheat sheet and retry.';
+  document.getElementById('recordedNote').textContent='✓ Result recorded for '+name;
+  document.getElementById('correctCount').textContent=score;
+  document.getElementById('wrongCount').textContent=QUESTIONS.length-score;
+  document.getElementById('pctCount').textContent=pct+'%';
+  const rl=document.getElementById('reviewList');
+  rl.innerHTML='<p class="review-hd">Question Review</p>';
+  answers.forEach((a,i)=>{
+    const d=document.createElement('div');d.className='review-item';
+    d.innerHTML='<span style="font-size:15px;flex-shrink:0">'+(a.correct?'✅':'❌')+'</span>'
+      +'<span><span class="review-q">Q'+(i+1)+': '+a.tag+'</span><br>'
+      +'<span style="color:var(--mid);font-size:var(--fs-xs)">'+QUESTIONS[i].question+'</span></span>';
+    rl.appendChild(d);
+  });
+}
+function retryQuiz(){
+  current=0;score=0;answers=[];answered=false;
+  document.getElementById('fieldName').value='';
+  document.getElementById('fieldEmail').value='';
+  document.getElementById('btnSubmit').disabled=false;
+  document.getElementById('submittingMsg').classList.remove('show');
+  startQuiz();
+}
+show('intro');
+</script>
+</body>
+</html>
