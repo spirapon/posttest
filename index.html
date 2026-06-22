@@ -376,7 +376,6 @@ hr.cs-rule { border:none; border-top:1.5px solid var(--rule); margin:2px 0; }
         </div>
         <div class="review-list" id="reviewList"></div>
         <button class="btn-retry" onclick="retryQuiz()">Retry Test ↺</button>
-        <a id="btnMailto" class="btn-mailto" href="#" target="_blank">✉️ Send Result to My Email</a>
       </div>
     </div>
   </div>
@@ -540,25 +539,6 @@ hr.cs-rule { border:none; border-top:1.5px solid var(--rule); margin:2px 0; }
 
 </div><!-- /layout -->
 
-<!-- Hidden iframe + form for Google Forms submission (avoids CORS) -->
-<iframe name="gform_iframe" style="display:none"></iframe>
-<form id="gform" action="https://docs.google.com/forms/d/e/1FAIpQLScvZ9XKwXF-b9DBmbqjq-UTI52D4dJZQrDcozda2RCR_tU26Q/formResponse" method="POST" target="gform_iframe" style="display:none">
-  <input type="hidden" name="entry.175741283"  id="gi_name">
-  <input type="hidden" name="entry.1267231086" id="gi_email">
-  <input type="hidden" name="entry.683790302"  id="gi_score">
-  <input type="hidden" name="entry.284930202"  id="gi_result">
-  <input type="hidden" name="entry.1831646627" id="gi_q0">
-  <input type="hidden" name="entry.586234688"  id="gi_q1">
-  <input type="hidden" name="entry.643193939"  id="gi_q2">
-  <input type="hidden" name="entry.1780646967" id="gi_q3">
-  <input type="hidden" name="entry.670167989"  id="gi_q4">
-  <input type="hidden" name="entry.1479369030" id="gi_q5">
-  <input type="hidden" name="entry.2057257092" id="gi_q6">
-  <input type="hidden" name="entry.318827687"  id="gi_q7">
-  <input type="hidden" name="entry.1521584427" id="gi_q8">
-  <input type="hidden" name="entry.1966862327" id="gi_q9">
-</form>
-
 <script>
 /* ── TOGGLE ── */
 let sheetVisible = true;
@@ -660,19 +640,56 @@ function submitResult(){
   const pct=Math.round(score/QUESTIONS.length*100),pass=pct>=70;
   document.getElementById('btnSubmit').disabled=true;
   document.getElementById('submittingMsg').classList.add('show');
-  // Populate hidden form and submit via iframe (avoids CORS)
-  document.getElementById('gi_name').value  = nVal;
-  document.getElementById('gi_email').value = eVal;
-  document.getElementById('gi_score').value = pct+'% ('+score+'/'+QUESTIONS.length+')';
-  document.getElementById('gi_result').value= pass?'PASS':'FAIL';
-  answers.forEach((a,i)=>{
-    document.getElementById('gi_q'+i).value = LETTERS[a.selected]+' — '+a.chosenText+' '+(a.correct?'✅':'❌');
+
+  // Build field map
+  const fields = {
+    'entry.175741283':  nVal,
+    'entry.1267231086': eVal,
+    'entry.683790302':  pct+'% ('+score+'/'+QUESTIONS.length+')',
+    'entry.284930202':  pass?'PASS':'FAIL',
+    'entry.1831646627': LETTERS[answers[0].selected]+' — '+answers[0].chosenText+' '+(answers[0].correct?'✅':'❌'),
+    'entry.586234688':  LETTERS[answers[1].selected]+' — '+answers[1].chosenText+' '+(answers[1].correct?'✅':'❌'),
+    'entry.643193939':  LETTERS[answers[2].selected]+' — '+answers[2].chosenText+' '+(answers[2].correct?'✅':'❌'),
+    'entry.1780646967': LETTERS[answers[3].selected]+' — '+answers[3].chosenText+' '+(answers[3].correct?'✅':'❌'),
+    'entry.670167989':  LETTERS[answers[4].selected]+' — '+answers[4].chosenText+' '+(answers[4].correct?'✅':'❌'),
+    'entry.1479369030': LETTERS[answers[5].selected]+' — '+answers[5].chosenText+' '+(answers[5].correct?'✅':'❌'),
+    'entry.2057257092': LETTERS[answers[6].selected]+' — '+answers[6].chosenText+' '+(answers[6].correct?'✅':'❌'),
+    'entry.318827687':  LETTERS[answers[7].selected]+' — '+answers[7].chosenText+' '+(answers[7].correct?'✅':'❌'),
+    'entry.1521584427': LETTERS[answers[8].selected]+' — '+answers[8].chosenText+' '+(answers[8].correct?'✅':'❌'),
+    'entry.1966862327': LETTERS[answers[9].selected]+' — '+answers[9].chosenText+' '+(answers[9].correct?'✅':'❌'),
+    'fvv': '1'
+  };
+
+  // Dynamically create iframe + form, submit, then clean up
+  const iframe = document.createElement('iframe');
+  iframe.name = 'gf_target_'+Date.now();
+  iframe.style.cssText = 'position:absolute;width:1px;height:1px;left:-9999px;top:-9999px;';
+  document.body.appendChild(iframe);
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = 'https://docs.google.com/forms/d/e/1FAIpQLScvZ9XKwXF-b9DBmbqjq-UTI52D4dJZQrDcozda2RCR_tU26Q/formResponse';
+  form.target = iframe.name;
+  form.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+
+  Object.entries(fields).forEach(([name, value]) => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
   });
-  document.getElementById('gform').submit();
-  // Short delay then show results (iframe submission is fire-and-forget)
-  setTimeout(()=>showResults(nVal,eVal,pct,pass), 600);
+
+  document.body.appendChild(form);
+  form.submit();
+
+  // Clean up after 5s, then show results
+  setTimeout(()=>{
+    try{document.body.removeChild(form);document.body.removeChild(iframe);}catch(e){}
+    showResults(nVal,pct,pass);
+  }, 1000);
 }
-function showResults(name,email,pct,pass){
+function showResults(name,pct,pass){
   show('results');
   document.getElementById('resultBadge').className='result-badge '+(pass?'pass':'fail');
   document.getElementById('resultBadge').textContent=pass?'🎉':'📚';
@@ -692,24 +709,6 @@ function showResults(name,email,pct,pass){
       +'<span style="color:var(--mid);font-size:var(--fs-xs)">'+QUESTIONS[i].question+'</span></span>';
     rl.appendChild(d);
   });
-  // Build mailto with result summary
-  const breakdown = answers.map((a,i)=>
-    'Q'+(i+1)+' ('+a.tag+'): '+LETTERS[a.selected]+' — '+a.chosenText+' '+(a.correct?'[Correct]':'[Incorrect]')
-  ).join('\n');
-  const subject = encodeURIComponent('Upskill Generative AI Post-Test Result — '+name);
-  const body = encodeURIComponent(
-    'Hi '+name+',\n\n'+
-    'Here are your Claude Cowork Post-Test results:\n\n'+
-    'Score: '+pct+'% ('+score+'/'+QUESTIONS.length+') — '+(pass?'PASS ✅':'FAIL ❌')+'\n\n'+
-    'Question Breakdown:\n'+breakdown+'\n\n'+
-    (pass
-      ? 'Well done! You demonstrated solid understanding of Claude Cowork.'
-      : 'You scored below 70%. Review the cheat sheet and try again.'
-    )+'\n\n'+
-    'Upskill Generative AI for CSII Office Automation · June 2026'
-  );
-  document.getElementById('btnMailto').href='mailto:'+email+'?subject='+subject+'&body='+body;
-  document.getElementById('btnMailto').style.display='inline-flex';
 }
 function retryQuiz(){
   current=0;score=0;answers=[];answered=false;
