@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Claude Cowork — Training Hub</title>
+<title>Upskill Generative AI for CSII Office Automation</title>
 <style>
 /* ── RESET & TOKENS ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -300,7 +300,7 @@ hr.cs-rule { border:none; border-top:1.5px solid var(--rule); margin:2px 0; }
     <div class="topbar-logo">🤖</div>
     <div class="topbar-title">
       <h1>Upskill Generative AI for CSII Office Automation</h1>
-      <p>Post-Test &amp; Quick Reference</p>
+      <p>CSII · Post-Test &amp; Quick Reference</p>
     </div>
   </div>
   <button class="btn-toggle" id="toggleBtn" onclick="toggleSheet()">
@@ -320,7 +320,7 @@ hr.cs-rule { border:none; border-top:1.5px solid var(--rule); margin:2px 0; }
       <!-- INTRO -->
       <div id="intro">
         <span class="intro-icon">📋</span>
-        <h2>Post-Test</h2>
+        <h2>Post-Test: Upskill Generative AI for CSII Office Automation</h2>
         <p>Answer 10 scenario-based questions to demonstrate your understanding of Claude Cowork, prompt engineering, and AI best practices.</p>
         <div class="intro-stats">
           <div class="stat"><div class="stat-num">10</div><div class="stat-lbl">Questions</div></div>
@@ -376,6 +376,7 @@ hr.cs-rule { border:none; border-top:1.5px solid var(--rule); margin:2px 0; }
         </div>
         <div class="review-list" id="reviewList"></div>
         <button class="btn-retry" onclick="retryQuiz()">Retry Test ↺</button>
+        <a id="btnMailto" class="btn-mailto" href="#" target="_blank">✉️ Send Result to My Email</a>
       </div>
     </div>
   </div>
@@ -469,7 +470,7 @@ hr.cs-rule { border:none; border-top:1.5px solid var(--rule); margin:2px 0; }
           <div class="gloss-item"><span class="gloss-term">Connector</span><span class="gloss-def">Driver that lets Claude connect to external apps (e.g. Google Drive, Slack).</span></div>
           <div class="gloss-item"><span class="gloss-term">Artifact</span><span class="gloss-def">Standalone output created alongside your chat — doc, code, SVG, etc.</span></div>
           <div class="gloss-item"><span class="gloss-term">Global Inst.</span><span class="gloss-def">Brief that applies to every session: your role, shorthand, output preferences.</span></div>
-          <div class="gloss-item"><span class="gloss-term">Scheduled</span><span class="gloss-def">Recurring task inside a Project. Always test on drafts first.</span></div>
+          <div class="gloss-item"><span class="gloss-term">Scheduled Task</span><span class="gloss-def">Recurring task inside a Project. Always test on drafts first.</span></div>
         </div>
 
         <hr class="cs-rule">
@@ -522,6 +523,12 @@ hr.cs-rule { border:none; border-top:1.5px solid var(--rule); margin:2px 0; }
           <a class="cs-link" href="https://anthropic.skilljar.com/ai-fluency-framework-foundations" target="_blank">
             <div class="cs-link-icon">🧠</div><div><strong>AI Fluency: Framework &amp; Foundations</strong><span>anthropic.skilljar.com/ai-fluency-framework-foundations</span></div>
           </a>
+          <a class="cs-link" href="https://anthropic.skilljar.com/ai-capabilities-and-limitations" target="_blank">
+            <div class="cs-link-icon">⚡</div><div><strong>AI Capabilities &amp; Limitations</strong><span>anthropic.skilljar.com/ai-capabilities-and-limitations</span></div>
+          </a>
+          <a class="cs-link" href="https://anthropic.skilljar.com/ai-fluency-for-educators" target="_blank">
+            <div class="cs-link-icon">🎓</div><div><strong>AI Fluency for Educators</strong><span>anthropic.skilljar.com/ai-fluency-for-educators</span></div>
+          </a>
           <a class="cs-link" href="https://support.claude.com" target="_blank">
             <div class="cs-link-icon">💬</div><div><strong>Claude Support</strong><span>support.claude.com</span></div>
           </a>
@@ -532,6 +539,25 @@ hr.cs-rule { border:none; border-top:1.5px solid var(--rule); margin:2px 0; }
   </div><!-- /sheet-col -->
 
 </div><!-- /layout -->
+
+<!-- Hidden iframe + form for Google Forms submission (avoids CORS) -->
+<iframe name="gform_iframe" style="display:none"></iframe>
+<form id="gform" action="https://docs.google.com/forms/d/e/1FAIpQLScvZ9XKwXF-b9DBmbqjq-UTI52D4dJZQrDcozda2RCR_tU26Q/formResponse" method="POST" target="gform_iframe" style="display:none">
+  <input type="hidden" name="entry.175741283"  id="gi_name">
+  <input type="hidden" name="entry.1267231086" id="gi_email">
+  <input type="hidden" name="entry.683790302"  id="gi_score">
+  <input type="hidden" name="entry.284930202"  id="gi_result">
+  <input type="hidden" name="entry.1831646627" id="gi_q0">
+  <input type="hidden" name="entry.586234688"  id="gi_q1">
+  <input type="hidden" name="entry.643193939"  id="gi_q2">
+  <input type="hidden" name="entry.1780646967" id="gi_q3">
+  <input type="hidden" name="entry.670167989"  id="gi_q4">
+  <input type="hidden" name="entry.1479369030" id="gi_q5">
+  <input type="hidden" name="entry.2057257092" id="gi_q6">
+  <input type="hidden" name="entry.318827687"  id="gi_q7">
+  <input type="hidden" name="entry.1521584427" id="gi_q8">
+  <input type="hidden" name="entry.1966862327" id="gi_q9">
+</form>
 
 <script>
 /* ── TOGGLE ── */
@@ -634,14 +660,19 @@ function submitResult(){
   const pct=Math.round(score/QUESTIONS.length*100),pass=pct>=70;
   document.getElementById('btnSubmit').disabled=true;
   document.getElementById('submittingMsg').classList.add('show');
-  const fd=new FormData();
-  fd.append(ENTRY.name,nVal);fd.append(ENTRY.email,eVal);
-  fd.append(ENTRY.score,pct+'% ('+score+'/'+QUESTIONS.length+')');
-  fd.append(ENTRY.result,pass?'PASS':'FAIL');
-  answers.forEach((a,i)=>fd.append(ENTRY.q[i],LETTERS[a.selected]+' — '+a.chosenText+' '+(a.correct?'✅':'❌')));
-  fetch(FORM_ACTION,{method:'POST',mode:'no-cors',body:fd}).catch(()=>{}).finally(()=>showResults(nVal,pct,pass));
+  // Populate hidden form and submit via iframe (avoids CORS)
+  document.getElementById('gi_name').value  = nVal;
+  document.getElementById('gi_email').value = eVal;
+  document.getElementById('gi_score').value = pct+'% ('+score+'/'+QUESTIONS.length+')';
+  document.getElementById('gi_result').value= pass?'PASS':'FAIL';
+  answers.forEach((a,i)=>{
+    document.getElementById('gi_q'+i).value = LETTERS[a.selected]+' — '+a.chosenText+' '+(a.correct?'✅':'❌');
+  });
+  document.getElementById('gform').submit();
+  // Short delay then show results (iframe submission is fire-and-forget)
+  setTimeout(()=>showResults(nVal,eVal,pct,pass), 600);
 }
-function showResults(name,pct,pass){
+function showResults(name,email,pct,pass){
   show('results');
   document.getElementById('resultBadge').className='result-badge '+(pass?'pass':'fail');
   document.getElementById('resultBadge').textContent=pass?'🎉':'📚';
@@ -661,6 +692,24 @@ function showResults(name,pct,pass){
       +'<span style="color:var(--mid);font-size:var(--fs-xs)">'+QUESTIONS[i].question+'</span></span>';
     rl.appendChild(d);
   });
+  // Build mailto with result summary
+  const breakdown = answers.map((a,i)=>
+    'Q'+(i+1)+' ('+a.tag+'): '+LETTERS[a.selected]+' — '+a.chosenText+' '+(a.correct?'[Correct]':'[Incorrect]')
+  ).join('\n');
+  const subject = encodeURIComponent('Upskill Generative AI Post-Test Result — '+name);
+  const body = encodeURIComponent(
+    'Hi '+name+',\n\n'+
+    'Here are your Claude Cowork Post-Test results:\n\n'+
+    'Score: '+pct+'% ('+score+'/'+QUESTIONS.length+') — '+(pass?'PASS ✅':'FAIL ❌')+'\n\n'+
+    'Question Breakdown:\n'+breakdown+'\n\n'+
+    (pass
+      ? 'Well done! You demonstrated solid understanding of Claude Cowork.'
+      : 'You scored below 70%. Review the cheat sheet and try again.'
+    )+'\n\n'+
+    'Upskill Generative AI for CSII Office Automation · June 2026'
+  );
+  document.getElementById('btnMailto').href='mailto:'+email+'?subject='+subject+'&body='+body;
+  document.getElementById('btnMailto').style.display='inline-flex';
 }
 function retryQuiz(){
   current=0;score=0;answers=[];answered=false;
