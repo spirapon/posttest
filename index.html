@@ -106,6 +106,8 @@ body {
 .option:disabled { cursor:default; }
 .option.correct { border-color:var(--correct); background:var(--ok-bg); }
 .option.wrong   { border-color:var(--wrong);   background:var(--warn-bg); }
+.option.selected { border-color:var(--purple); background:var(--soft); }
+.option.selected .opt-letter { background:var(--purple); border-color:var(--purple); color:#fff; }
 .opt-letter {
   min-width:28px; height:28px; border-radius:50%;
   background:var(--soft); border:1.5px solid var(--rule);
@@ -122,14 +124,20 @@ body {
 .feedback.show    { display:block; }
 .feedback.correct { background:var(--ok-bg);   border:1.5px solid #A8E8C8; color:#0F6B44; }
 .feedback.wrong   { background:var(--warn-bg); border:1.5px solid #F5B8A5; color:#8B2910; }
-.btn-wrap { padding:0 30px 28px; }
+.btn-wrap { padding:0 30px 28px; display:flex; gap:10px; }
 .btn-next {
-  width:100%; padding:14px; background:var(--grad); color:#fff;
+  flex:1; padding:14px; background:var(--grad); color:#fff;
   font-size:var(--fs-md); font-weight:700; border:none; border-radius:11px;
   cursor:pointer; display:none; box-shadow:0 4px 20px rgba(123,79,212,.25);
 }
 .btn-next.show { display:block; }
 .btn-next:hover { opacity:.9; }
+.btn-back {
+  flex:0 0 auto; padding:14px 22px; background:var(--white); color:var(--mid);
+  font-size:var(--fs-md); font-weight:700; border:1.5px solid var(--rule); border-radius:11px;
+  cursor:pointer; visibility:hidden;
+}
+.btn-back:hover { background:var(--soft); }
 
 /* INTRO */
 #intro { padding:48px 36px; text-align:center; }
@@ -340,7 +348,10 @@ hr.cs-rule { border:none; border-top:1.5px solid var(--rule); margin:2px 0; }
         <div class="q-text" id="qText"></div>
         <div class="options" id="options"></div>
         <div class="feedback" id="feedback"></div>
-        <div class="btn-wrap"><button class="btn-next" id="btnNext" onclick="nextQuestion()"></button></div>
+        <div class="btn-wrap">
+          <button class="btn-back" id="btnBack" onclick="backQuestion()">← Back</button>
+          <button class="btn-next" id="btnNext" onclick="nextQuestion()"></button>
+        </div>
       </div>
 
       <!-- NAME/EMAIL -->
@@ -580,7 +591,7 @@ const QUESTIONS = [
 ];
 
 const LETTERS=["A","B","C","D"];
-let current=0,score=0,answers=[],answered=false;
+let current=0,score=0,answers=Array(QUESTIONS.length).fill(null);
 
 function setProgress(p){document.getElementById('progressBar').style.width=p+'%';}
 function show(id){
@@ -592,7 +603,8 @@ function show(id){
 }
 function startQuiz(){show('quiz');setProgress(0);renderQuestion();}
 function renderQuestion(){
-  const q=QUESTIONS[current];answered=false;
+  const q=QUESTIONS[current];
+  const sel=answers[current];
   setProgress(current/QUESTIONS.length*100);
   document.getElementById('qCounter').textContent=(current+1)+' / '+QUESTIONS.length;
   document.getElementById('qTag').textContent=q.tag;
@@ -600,34 +612,35 @@ function renderQuestion(){
   document.getElementById('qText').textContent=q.question;
   const wrap=document.getElementById('options');wrap.innerHTML='';
   q.options.forEach((opt,i)=>{
-    const btn=document.createElement('button');btn.className='option';
+    const btn=document.createElement('button');
+    btn.className='option'+(sel===i?' selected':'');
     btn.innerHTML='<span class="opt-letter">'+LETTERS[i]+'</span><span>'+opt+'</span>';
     btn.onclick=()=>selectAnswer(i);wrap.appendChild(btn);
   });
   document.getElementById('feedback').className='feedback';
   document.getElementById('feedback').innerHTML='';
-  const nx=document.getElementById('btnNext');nx.className='btn-next';
+  const nx=document.getElementById('btnNext');
+  nx.className='btn-next'+(sel!==null?' show':'');
   nx.textContent=current<QUESTIONS.length-1?'Next Question →':'Continue →';
+  document.getElementById('btnBack').style.visibility=current>0?'visible':'hidden';
 }
 function selectAnswer(idx){
-  if(answered)return;answered=true;
-  const q=QUESTIONS[current];const ok=idx===q.correct;
+  answers[current]=idx;
   document.querySelectorAll('.option').forEach((b,i)=>{
-    b.disabled=true;
-    if(i===q.correct)b.classList.add('correct');
-    else if(i===idx&&!ok)b.classList.add('wrong');
+    b.classList.toggle('selected',i===idx);
   });
-  if(ok)score++;
-  answers.push({selected:idx,correct:ok,tag:q.tag,question:q.question,chosenText:q.options[idx]});
-  const fb=document.getElementById('feedback');
-  fb.className='feedback show '+(ok?'correct':'wrong');
-  fb.innerHTML=(ok?'✅ <strong>Correct!</strong> ':'❌ <strong>Not quite.</strong> ')+q.explanation;
   document.getElementById('btnNext').classList.add('show');
 }
 function nextQuestion(){
+  if(answers[current]===null)return;
   current++;
-  if(current>=QUESTIONS.length){setProgress(100);show('namescreen');}
-  else renderQuestion();
+  if(current>=QUESTIONS.length){
+    score=answers.reduce((s,a,i)=>s+(a===QUESTIONS[i].correct?1:0),0);
+    setProgress(100);show('namescreen');
+  } else renderQuestion();
+}
+function backQuestion(){
+  if(current>0){current--;renderQuestion();}
 }
 function submitResult(){
   const nEl=document.getElementById('fieldName'),eEl=document.getElementById('fieldEmail');
@@ -642,23 +655,17 @@ function submitResult(){
   document.getElementById('submittingMsg').classList.add('show');
 
   // Build field map
-  const fields = {
-    'entry.175741283':  nVal,
-    'entry.1267231086': eVal,
-    'entry.683790302':  pct+'% ('+score+'/'+QUESTIONS.length+')',
-    'entry.284930202':  pass?'PASS':'FAIL',
-    'entry.1831646627': LETTERS[answers[0].selected]+' — '+answers[0].chosenText+' '+(answers[0].correct?'✅':'❌'),
-    'entry.586234688':  LETTERS[answers[1].selected]+' — '+answers[1].chosenText+' '+(answers[1].correct?'✅':'❌'),
-    'entry.643193939':  LETTERS[answers[2].selected]+' — '+answers[2].chosenText+' '+(answers[2].correct?'✅':'❌'),
-    'entry.1780646967': LETTERS[answers[3].selected]+' — '+answers[3].chosenText+' '+(answers[3].correct?'✅':'❌'),
-    'entry.670167989':  LETTERS[answers[4].selected]+' — '+answers[4].chosenText+' '+(answers[4].correct?'✅':'❌'),
-    'entry.1479369030': LETTERS[answers[5].selected]+' — '+answers[5].chosenText+' '+(answers[5].correct?'✅':'❌'),
-    'entry.2057257092': LETTERS[answers[6].selected]+' — '+answers[6].chosenText+' '+(answers[6].correct?'✅':'❌'),
-    'entry.318827687':  LETTERS[answers[7].selected]+' — '+answers[7].chosenText+' '+(answers[7].correct?'✅':'❌'),
-    'entry.1521584427': LETTERS[answers[8].selected]+' — '+answers[8].chosenText+' '+(answers[8].correct?'✅':'❌'),
-    'entry.1966862327': LETTERS[answers[9].selected]+' — '+answers[9].chosenText+' '+(answers[9].correct?'✅':'❌'),
-    'fvv': '1'
-  };
+  const fields = {};
+  fields[ENTRY.name]=nVal;
+  fields[ENTRY.email]=eVal;
+  fields[ENTRY.score]=pct+'% ('+score+'/'+QUESTIONS.length+')';
+  fields[ENTRY.result]=pass?'PASS':'FAIL';
+  QUESTIONS.forEach((q,i)=>{
+    const sel=answers[i];
+    const ok=sel===q.correct;
+    fields[ENTRY.q[i]]=LETTERS[sel]+' — '+q.options[sel]+' '+(ok?'✅':'❌');
+  });
+  fields['fvv']='1';
 
   // Dynamically create iframe + form, submit, then clean up
   const iframe = document.createElement('iframe');
@@ -702,16 +709,17 @@ function showResults(name,pct,pass){
   document.getElementById('pctCount').textContent=pct+'%';
   const rl=document.getElementById('reviewList');
   rl.innerHTML='<p class="review-hd">Question Review</p>';
-  answers.forEach((a,i)=>{
+  QUESTIONS.forEach((q,i)=>{
+    const ok=answers[i]===q.correct;
     const d=document.createElement('div');d.className='review-item';
-    d.innerHTML='<span style="font-size:15px;flex-shrink:0">'+(a.correct?'✅':'❌')+'</span>'
-      +'<span><span class="review-q">Q'+(i+1)+': '+a.tag+'</span><br>'
-      +'<span style="color:var(--mid);font-size:var(--fs-xs)">'+QUESTIONS[i].question+'</span></span>';
+    d.innerHTML='<span style="font-size:15px;flex-shrink:0">'+(ok?'✅':'❌')+'</span>'
+      +'<span><span class="review-q">Q'+(i+1)+': '+q.tag+'</span><br>'
+      +'<span style="color:var(--mid);font-size:var(--fs-xs)">'+q.question+'</span></span>';
     rl.appendChild(d);
   });
 }
 function retryQuiz(){
-  current=0;score=0;answers=[];answered=false;
+  current=0;score=0;answers=Array(QUESTIONS.length).fill(null);
   document.getElementById('fieldName').value='';
   document.getElementById('fieldEmail').value='';
   document.getElementById('btnSubmit').disabled=false;
